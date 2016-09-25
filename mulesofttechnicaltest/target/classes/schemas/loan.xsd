@@ -1,0 +1,16 @@
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="loan">
+    <xs:complexType>
+      <xs:sequence>
+      <xs:element type="xs:string" name="loanType"/>
+      <xs:element type="xs:string" name="email"/>
+        <xs:element type="xs:int" name="amount"/>
+        <xs:element type="xs:int" name="income"/>
+        <xs:element type="xs:string" name="expenses"/>
+        <xs:element type="xs:int" name="loanDuration"/>
+        <xs:element type="xs:string" name="interest"/>
+        <xs:element type="xs:int" name="applicationId"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

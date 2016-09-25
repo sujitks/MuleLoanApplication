@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+    <munit:config name="munit" doc:name="MUnit configuration"/>
+    <spring:beans>
+     <spring:import resource="classpath:globals.xml"/>
+        <spring:import resource="classpath:application-flows.xml"/>
+    </spring:beans>
+    <munit:test name="loan-eligibility-check-when-disposable-income-is-more-than-emi-should-be-true" description="Test">
+        <munit:set payload=" {&quot;loanType&quot;: &quot;home&quot;,&quot;email&quot;: &quot;sujit.singh@gmail.com&quot;, &quot;amount&quot;: &quot;20000&quot;, &quot;income&quot;: &quot;55000&quot;,	&quot;expenses&quot;: &quot;40000&quot;, &quot;loanDuration&quot;: &quot;36&quot;, &quot;interest&quot;: &quot;4&quot;,	&quot;applicationId&quot;: &quot;0&quot; }" mimeType="application/json" doc:name="Set Message"/>
+        <flow-ref name="loan-eligibility-check" doc:name="Flow-ref to loan-eligibility-check"/>
+        <logger message="#[message.outboundProperties['loanEligibility']]" level="INFO" doc:name="Logger"/>
+        <munit:assert-true message="failed" condition="#[message.outboundProperties['loanEligibility']=='true']" doc:name="Assert True"/>
+    </munit:test>
+    <munit:test name="loan-eligibility-check-when-disposable-income-is-less-than-emi-should-be-false" description="Test">
+        <munit:set payload=" {&quot;loanType&quot;: &quot;home&quot;,&quot;email&quot;: &quot;sujit.singh@gmail.com&quot;, &quot;amount&quot;: &quot;20000&quot;, &quot;income&quot;: &quot;55000&quot;, &quot;expenses&quot;: &quot;54000&quot;, &quot;loanDuration&quot;: &quot;36&quot;, &quot;interest&quot;: &quot;4&quot;, &quot;applicationId&quot;: &quot;0&quot; }" mimeType="application/json" doc:name="Set Message"/>
+        <flow-ref name="loan-eligibility-check" doc:name="Flow-ref to loan-eligibility-check"/>
+        <logger message="#[message.outboundProperties['loanEligibility']]" level="INFO" doc:name="Logger"/>
+        <munit:assert-true message="failed" condition="#[message.outboundProperties['loanEligibility']=='false']" doc:name="Assert True"/>
+    </munit:test>
+</mule>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd">
+    <flow name="loanapi-main">
+        <http:listener config-ref="loanapi-httpListenerConfig" path="/api/*" doc:name="HTTP"/>
+        <apikit:router config-ref="loanapi-config" doc:name="APIkit Router"/>
+        <exception-strategy ref="loanapi-apiKitGlobalExceptionMapping" doc:name="Reference Exception Strategy"/>
+    </flow>
+    <flow name="loanapi-console">
+        <http:listener config-ref="loanapi-httpListenerConfig" path="/console/*" doc:name="HTTP"/>
+        <apikit:console config-ref="loanapi-config" doc:name="APIkit Console"/>
+    </flow>
+    <flow name="get:/loan:loanapi-config">
+        <set-payload value="[{&quot;ID&quot;:1, &quot;loanType&quot;: &quot;Home&quot;}]" doc:name="Set Payload"/>
+    </flow>
+    <flow name="get:/loan/{ID}:loanapi-config">
+        <set-payload value="{&quot;ID&quot;:1001, &quot;loanType&quot;: &quot;Home&quot;,&quot;amount&quot;: 200000, &quot;income&quot;: &quot;55000&quot;, &quot;expenses&quot;: &quot;45000&quot;, &quot;loanDuration&quot;: &quot;36&quot;, &quot;interest&quot;: 4}" doc:name="Set Payload"/>
+    </flow>
+    <flow name="post:/loan/apply:application/xml:loanapi-config">
+        <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+        <set-property propertyName="applicationId" value="#[message.id]" doc:name="Property"/>
+        <jms:outbound-endpoint queue="AllLoans"  doc:name="JMS">
+            <jms:client-ack-transaction action="ALWAYS_BEGIN"/>
+        </jms:outbound-endpoint>
+        <set-payload value="&lt;loanApplicationResponse&gt;&lt;applicationId&gt;123-465-2627-abc2546&lt;/applicationId&gt;&lt;/loanApplicationResponse&gt;" doc:name="Set Payload" mimeType="application/xml"/>
+        <catch-exception-strategy doc:name="Catch Exception Strategy">
+            <logger message="#[error.MESSAGE]" level="ERROR" doc:name="Logger"/>
+        </catch-exception-strategy>
+    </flow>
+    <apikit:mapping-exception-strategy name="loanapi-apiKitGlobalExceptionMapping">
+        <apikit:mapping statusCode="404">
+            <apikit:exception value="org.mule.module.apikit.exception.NotFoundException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Resource not found&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="405">
+            <apikit:exception value="org.mule.module.apikit.exception.MethodNotAllowedException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Method not allowed&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="415">
+            <apikit:exception value="org.mule.module.apikit.exception.UnsupportedMediaTypeException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Unsupported media type&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="406">
+            <apikit:exception value="org.mule.module.apikit.exception.NotAcceptableException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Not acceptable&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="400">
+            <apikit:exception value="org.mule.module.apikit.exception.BadRequestException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Bad request&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+    </apikit:mapping-exception-strategy>
+</mule>

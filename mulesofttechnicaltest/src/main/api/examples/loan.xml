@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<loan>
+<loanType>home</loanType>
+<email>sujit.singh@gmail.com</email>
+<amount>200000</amount>
+<income>55000</income>
+<expenses>48000</expenses>
+<loanDuration>36</loanDuration>
+<interest>5</interest>
+<applicationId>1001</applicationId>
+</loan>

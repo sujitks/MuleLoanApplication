@@ -1,0 +1,37 @@
+#%RAML 0.8
+
+title: Loan API
+version: 1.0
+/loan:
+  get:
+   responses:
+      200:
+        body:
+          application/json:
+            example: |
+              [{"ID":1, "loanType": "Home"}]
+  /apply:
+    post:
+      body:
+        application/xml:
+          schema: 
+           !include schemas/loan.xsd
+          example: |
+           !include examples/loan.xml
+      responses:
+        201:
+          body:
+            application/xml:
+              example: |
+                <loanApplicationResponse><applicationId>123-465-2627-abc2546</applicationId></loanApplicationResponse>
+              
+  /{ID}:
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              example: |
+                {"ID":1001, "loanType": "Home","amount": 200000, "income": "55000", "expenses": "45000", "loanDuration": "36", "interest": 4}
+                
+    

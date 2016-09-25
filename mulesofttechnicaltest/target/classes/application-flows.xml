@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+    <append-string-transformer message="Eligibility - #[message.outboundProperties['loanEligibility']] and loan type - #[message.outboundProperties['loanType']]" name="Append_String" doc:name="Append String"/>
+    <sub-flow name="send-email">
+        <set-payload value="#[flowVars.emailBody]" mimeType="text/html" doc:name="Set Payload"/>
+        <smtp:outbound-endpoint host="${smtp.server}" port="${smtp.port}" user="${smtp.email}" password="${smtp.password}" connector-ref="Gmail" to="#[message.outboundProperties['email']]" from="${smtp.email}" responseTimeout="10000" doc:name="SMTP" subject="#[flowVars.emailSubject]" mimeType="text/html"/>
+    </sub-flow>
+    <flow name="select-loan-type">
+        <choice doc:name="Choice">
+            <when expression="#[message.outboundProperties['loanEligibility']=='true']">
+                <choice doc:name="Choice">
+                    <when expression="#[message.outboundProperties['loanType']=='home']">
+                        <logger message="#[message.outboundProperties['loanType']]" level="INFO" doc:name="Logger"/>
+                        <set-variable variableName="emailBody" value="Dear Customer, #['\n']We are pleased to inform you that your home loan application is successful and forwarded for further processing. #['\n']Best Regards, #['\n']Mule Banking Group" mimeType="text/html" doc:name="Variable"/>
+                        <set-variable variableName="emailSubject" value="Home Loan Approved" mimeType="text/html" doc:name="Variable"/>
+                        <flow-ref name="send-email" doc:name="send-email"/>
+                    </when>
+                    <otherwise>
+                        <logger message="#[message.outboundProperties['loanType']]" level="INFO" doc:name="Logger"/>
+                        <set-variable variableName="emailBody" value="Dear Customer, #['\n']We are pleased to inform you that your car loan application was successful and forwarded for further processing. #['\n']Best Regards, #['\n']Mule Banking Group" mimeType="text/html" doc:name="Variable"/>
+                        <set-variable variableName="emailSubject" value="Car Loan Approved" mimeType="text/html" doc:name="Variable"/>
+                        <flow-ref name="send-email" doc:name="send-email"/>
+                    </otherwise>
+                </choice>
+            </when>
+            <otherwise>
+                <set-variable variableName="emailSubject" value="Loan Rejected" mimeType="text/html" doc:name="Variable"/>
+                <set-variable variableName="emailBody" value="Dear Customer,#['\n']Sorry to inform that your recent #[message.outboundProperties['loanType']] loan application was not successful due to eligibility.#['\n']Best Regards, #['\n']Mule Banking Group" mimeType="text/html" doc:name="Variable"/>
+                <flow-ref name="send-email" doc:name="send-email"/>
+            </otherwise>
+        </choice>
+    </flow>
+    <flow name="loan-eligibility-check">
+        <json:json-to-object-transformer returnClass="mulesofttechnicaltest.LoanMessage" mimeType="application/json" doc:name="JSON to Object"/>
+        <component class="mulesofttechnicaltest.LoanChecker" doc:name="Java"/>
+    </flow>
+    <flow name="all-loan-processor">
+        <jms:inbound-endpoint queue="AllLoans"  doc:name="JMS">
+            <jms:transaction action="ALWAYS_BEGIN" timeout="1000000"/>
+        </jms:inbound-endpoint>
+        <set-variable variableName="messageBody" value="#[message.payload]" doc:name="Variable"/>
+        <logger message="#[flowVars.messageBody]" level="INFO" doc:name="Logger"/>
+        <set-payload value="#[flowVars.messageBody]" mimeType="application/xml" doc:name="Set Payload"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	loanType: payload.loan.loanType,
+	email: payload.loan.email,
+	amount: payload.loan.amount,
+	income: payload.loan.income,
+	expenses: payload.loan.expenses,
+	loanDuration: payload.loan.loanDuration,
+	interest: payload.loan.interest,
+	applicationId: payload.loan.applicationId
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <set-variable variableName="originalMessage" value="#[message.payload]" doc:name="Variable"/>
+        <byte-array-to-string-transformer doc:name="Byte Array to String"/>
+        <flow-ref name="loan-eligibility-check" doc:name="loan-eligibility-check"/>
+        <logger message="Loan eligibility - #[message.outboundProperties['loanEligibility']] - '\n'email is - #[message.outboundProperties['email']]" level="INFO" doc:name="Logger"/>
+        <set-payload value="#[flowVars.originalMessage]" doc:name="Set Payload"/>
+        <flow-ref name="select-loan-type" doc:name="select-loan-type"/>
+    </flow>
+</mule>
